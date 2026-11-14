@@ -1,71 +1,120 @@
 <!DOCTYPE html>
 <html>
-<header>
+<head>
     <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <script src="https://unpkg.com/tone"></script>
-        
+
     <title>YOOOOO SUCK IT GREEN BOY</title>
-</header>
+    <header>green bois suck</header>
+</head>
 
 <body>
+    <h1>no me gusta green boys</h1>
+    <img src="co2 _brightnes_jpeg.jpg" alt="co2_brightnes_jpeg" width="400" height="400">
+    
+    <input type="file" id="upload" accept="image/png" />
+    <button id="playBtn" disabled>Play Image</button>
+    <canvas id="canvas"></canvas>
+    
+    <script>
+        const upload = document.getElementById('upload');
+        const playBtn = document.getElementById('playBtn');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-<input type="file" id="co2_brightnes_jpeg" accept="image/png">
-<canvas id="canvas"></canvas>
-<pre id="output"></pre>
+        let columnData = [];
 
-<script>
-const input = document.getElementById("imageInput");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+        // 1. Load the uploaded PNG onto the Canvas
+        upload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-input.addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+        const img = new Image();
+        img.onload = () => {
+            // Optional: Resize width to 64 columns so playback stays rhythmic and manageable
+            const targetWidth = Math.min(img.width, 64);
+            const scale = targetWidth / img.width;
+            canvas.width = targetWidth;
+            canvas.height = Math.round(img.height * scale);
 
-    const img = new Image();
-    img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            columnData = extractColumnRGB(canvas.width, canvas.height);
+            playBtn.disabled = false;
+        };
+        img.src = URL.createObjectURL(file);
+        });
 
-        ctx.drawImage(img, 0, 0);
+        // 2. Extract average RGB for each vertical column
+        function extractColumnRGB(width, height) {
+        // Returns a flat Uint8ClampedArray: [R, G, B, A, R, G, B, A, ...]
+        const imgData = ctx.getImageData(0, 0, width, height).data;
+        const columns = [];
 
-        // Extract pixel data
-        const imageData = ctx.getImageData(
-            0, 0, canvas.width, canvas.height
-        );
+        for (let x = 0; x < width; x++) {
+            let rTotal = 0, gTotal = 0, bTotal = 0;
 
-        const pixels = imageData.data;
-        const result = [];
-
-        for (let y = 0; y < canvas.height; y++) {
-            for (let x = 0; x < canvas.width; x++) {
-                const i = (y * canvas.width + x) * 4;
-
-                const r = pixels[i];
-                const g = pixels[i + 1];
-                const b = pixels[i + 2];
-                const a = pixels[i + 3];
-
-                const brightness =
-                    (r * 0.299 + g * 0.587 + b * 0.114);
-
-                result.push({
-                    x, y, r, g, b, a,
-                    brightness
-                });
+            for (let y = 0; y < height; y++) {
+            // Formula to find the starting index of pixel (x, y)
+            const idx = (y * width + x) * 4;
+            rTotal += imgData[idx];
+            gTotal += imgData[idx + 1];
+            bTotal += imgData[idx + 2];
             }
+
+            columns.push({
+            r: Math.round(rTotal / height),
+            g: Math.round(gTotal / height),
+            b: Math.round(bTotal / height)
+            });
+        }
+        return columns;
         }
 
-        document.getElementById("output").textContent =
-            JSON.stringify(result.slice(0, 100), null, 2);
+        // 3. Map RGB values to musical notes and play via Tone.js
+        playBtn.addEventListener('click', async () => {
+        // Browsers require a user gesture to start the Web Audio context
+        await Tone.start();
 
-        console.log(result);
-    };
+        // Clear any previous playback
+        Tone.Transport.stop();
+        Tone.Transport.cancel();
 
-    img.src = URL.createObjectURL(file);
-});
-</script>
+        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        
+        // C Major Pentatonic scale across 3 octaves (always sounds pleasant)
+        const scale = [
+            'C3', 'D3', 'E3', 'G3', 'A3',
+            'C4', 'D4', 'E4', 'G4', 'A4',
+            'C5', 'D5', 'E5', 'G5', 'A5', 'C6'
+        ];
+
+        // Schedule each column as a 16th note ("16n")
+        const seq = new Tone.Sequence((time, col) => {
+            // Red (0–255) controls pitch index in the scale
+            const noteIndex = Math.floor((col.r / 256) * scale.length);
+            const note = scale[noteIndex];
+
+            // Green (0–255) controls note velocity / volume (0.1 to 1.0)
+            const velocity = Math.max(0.1, col.g / 255);
+
+            // Blue (0–255) adds a harmonic fifth above if blue is dominant
+            if (col.b > 150 && noteIndex + 2 < scale.length) {
+            const harmony = scale[noteIndex + 2];
+            synth.triggerAttackRelease([note, harmony], '16n', time, velocity);
+            } else {
+            synth.triggerAttackRelease(note, '16n', time, velocity);
+            }
+        }, columnData, '16n');
+
+        seq.loop = false;
+        seq.start(0);
+        Tone.Transport.bpm.value = 120;
+        Tone.Transport.start();
+        });
+    
+    </script>
+
 
 </body>
 </html>
