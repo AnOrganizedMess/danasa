@@ -335,7 +335,7 @@
   <header class="page-header">
     <div class="hud-badge">
       <span class="status-dot"></span>
-      <span>SYS.ONLINE // CREDITS: &infin;</span>
+      <span>SYS.ONLINE // CREDITS: NASA; </span>
     </div>
     <h1>Crew Platina</h1>
     <h2 class="subtitle">Earth Information Jukebox</h2>
@@ -448,7 +448,7 @@
       const readout = document.getElementById("statusReadout");
       const eq = document.getElementById("equalizer");
       
-      readout.textContent = `PLAYING PATTERN 0${num}...`;
+      readout.textContent = `PLAYING CH-0${num}...`;
       readout.style.color = "#EBEBD8";
       eq.classList.add("playing");
 
@@ -459,7 +459,7 @@
       clearTimeout(eqTimeout);
       eqTimeout = setTimeout(() => {
         eq.classList.remove("playing");
-        readout.textContent = `PATTERN 0${num} COMPLETE`;
+        readout.textContent = `CH-0${num} COMPLETE`;
         readout.style.color = "#9BA685";
       }, 900);
     }
