@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<header>
+    <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <script src="https://unpkg.com/tone"></script>
+        
+    <title>YOOOOO SUCK IT GREEN BOY</title>
+</header>
+
+<body>
+
+<input type="file" id="co2_brightnes_jpeg" accept="image/png">
+<canvas id="canvas"></canvas>
+<pre id="output"></pre>
+
+<script>
+const input = document.getElementById("imageInput");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+input.addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const img = new Image();
+    img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.drawImage(img, 0, 0);
+
+        // Extract pixel data
+        const imageData = ctx.getImageData(
+            0, 0, canvas.width, canvas.height
+        );
+
+        const pixels = imageData.data;
+        const result = [];
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const i = (y * canvas.width + x) * 4;
+
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                const a = pixels[i + 3];
+
+                const brightness =
+                    (r * 0.299 + g * 0.587 + b * 0.114);
+
+                result.push({
+                    x, y, r, g, b, a,
+                    brightness
+                });
+            }
+        }
+
+        document.getElementById("output").textContent =
+            JSON.stringify(result.slice(0, 100), null, 2);
+
+        console.log(result);
+    };
+
+    img.src = URL.createObjectURL(file);
+});
+</script>
+
+</body>
+</html>
+
