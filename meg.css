@@ -322,4 +322,43 @@
     .page-footer p {
       margin: 0;
     }
+
+    /* Upload Button + Preset Dropdown Row */
+.disc-loader-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Tactile Retro Dropdown Menu */
+.preset-select {
+  background-color: #EBEBD8;
+  color: #455230;
+  border: 3px solid #2e381f;
+  box-shadow: 0 4px 0 #2e381f;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s ease, transform 0.08s ease;
+}
+
+.preset-select:hover,
+.preset-select:focus {
+  background-color: #9BA685;
+  color: #2e381f;
+}
+
+.preset-select option {
+  background-color: #EBEBD8;
+  color: #455230;
+  font-weight: bold;
+}
   
