@@ -1,0 +1,49 @@
+<button id="play">Play</button>
+
+<script>
+const config = {
+  frequency: 440,
+  waveform: "sine",
+  volume: 0.2,
+  duration: 1,
+  attack: 0.05,
+  release: 0.3
+};
+
+const audio = new AudioContext();
+
+document.getElementById("play").onclick =
+async () => {
+  await audio.resume();
+
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+
+  const now = audio.currentTime;
+
+  osc.type = config.waveform;
+  osc.frequency.value = config.frequency;
+
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(
+    config.volume,
+    now + config.attack
+  );
+
+  gain.gain.setValueAtTime(
+    config.volume,
+    now + config.duration
+  );
+
+  gain.gain.linearRampToValueAtTime(
+    0,
+    now + config.duration + config.release
+  );
+
+  osc.connect(gain);
+  gain.connect(audio.destination);
+
+  osc.start(now);
+  osc.stop(now + config.duration + config.release);
+};
+</script>

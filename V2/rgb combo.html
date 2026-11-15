@@ -1,0 +1,315 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image to Music Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        button, input {
+            margin: 10px 5px;
+            padding: 10px;
+        }
+
+        canvas {
+            max-width: 100%;
+            border: 1px solid black;
+        }
+
+        pre {
+            background: white;
+            padding: 10px;
+            max-height: 250px;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Image to Music Generator</h2>
+
+<input type="file" id="imageInput" accept="image/png">
+
+<br>
+
+<canvas id="canvas"></canvas>
+
+<br>
+
+<button id="play">Play Music</button>
+<button id="stop">Stop Music</button>
+
+<h3>Extracted RGB Data</h3>
+<pre id="output"></pre>
+
+<script>
+
+const input = document.getElementById("imageInput");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const output = document.getElementById("output");
+
+let result = [];
+let audio;
+let activeNodes = [];
+
+
+// AUDIO CONFIGURATION
+
+const config = {
+    minFrequency: 150,
+    maxFrequency: 1200,
+    maxVolume: 0.2,
+    noteDuration: 0.12,
+    release: 0.08,
+    waveform: "sine",
+    sampleStep: 4
+};
+
+
+// IMAGE PROCESSING
+
+input.addEventListener("change", (event) => {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    const img = new Image();
+
+    img.onload = () => {
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(
+            0, 0,
+            canvas.width,
+            canvas.height
+        );
+
+        const pixels = imageData.data;
+
+        result = [];
+
+        // Extract pixel values
+
+        for (let y = 0; y < canvas.height; y += config.sampleStep) {
+
+            for (let x = 0; x < canvas.width; x += config.sampleStep) {
+
+                const i = (y * canvas.width + x) * 4;
+
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                const a = pixels[i + 3];
+
+                const brightness =
+                    r * 0.299 +
+                    g * 0.587 +
+                    b * 0.114;
+
+                result.push({
+                    x,
+                    y,
+                    r,
+                    g,
+                    b,
+                    a,
+                    brightness
+                });
+
+            }
+        }
+
+        output.textContent =
+            JSON.stringify(result.slice(0, 100), null, 2);
+
+        console.log("Extracted image data:", result);
+
+        URL.revokeObjectURL(img.src);
+    };
+
+    img.src = URL.createObjectURL(file);
+
+});
+
+
+// RGB TO MUSIC CONVERSION
+
+document.getElementById("play").onclick = async () => {
+
+    if (result.length === 0) {
+        alert("Please upload an image first!");
+        return;
+    }
+
+    stopMusic();
+
+    if (!audio) {
+        audio = new AudioContext();
+    }
+
+    await audio.resume();
+
+    const startTime = audio.currentTime + 0.1;
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    result.forEach((pixel, index) => {
+
+        if (pixel.a === 0) return;
+
+        // RED = FREQUENCY / PITCH
+
+        const frequency =
+            config.minFrequency +
+            (pixel.r / 255) *
+            (config.maxFrequency - config.minFrequency);
+
+
+        // GREEN = VOLUME
+
+        const volume =
+            (pixel.g / 255) *
+            config.maxVolume;
+
+
+        // BLUE = WAVEFORM SELECTION
+
+        let waveform = "sine";
+
+        if (pixel.b < 85) {
+            waveform = "sine";
+        }
+        else if (pixel.b < 170) {
+            waveform = "triangle";
+        }
+        else {
+            waveform = "sawtooth";
+        }
+
+
+        // X = STEREO POSITION
+
+        const pan =
+            (pixel.x / Math.max(1, width - 1)) * 2 - 1;
+
+
+        // Y = NOTE TIMING
+
+        const time =
+            startTime +
+            (pixel.y / config.sampleStep) *
+            config.noteDuration;
+
+
+        // BRIGHTNESS = NOTE DURATION
+
+        const duration =
+            0.05 +
+            (pixel.brightness / 255) * 0.2;
+
+
+        // CREATE OSCILLATOR
+
+        const osc = audio.createOscillator();
+
+        const gain = audio.createGain();
+
+        const panner = audio.createStereoPanner();
+
+        osc.type = waveform;
+
+        osc.frequency.setValueAtTime(
+            frequency,
+            time
+        );
+
+
+        // ENVELOPE
+
+        gain.gain.setValueAtTime(0, time);
+
+        gain.gain.linearRampToValueAtTime(
+            volume,
+            time + 0.02
+        );
+
+        gain.gain.setValueAtTime(
+            volume,
+            time + duration
+        );
+
+        gain.gain.linearRampToValueAtTime(
+            0,
+            time + duration + config.release
+        );
+
+
+        // STEREO PANNING
+
+        panner.pan.setValueAtTime(
+            pan,
+            time
+        );
+
+
+        // CONNECT AUDIO NODES
+
+        osc.connect(gain);
+
+        gain.connect(panner);
+
+        panner.connect(audio.destination);
+
+
+        // PLAY NOTE
+
+        osc.start(time);
+
+        osc.stop(time + duration + config.release);
+
+        activeNodes.push(osc);
+
+        osc.onended = () => {
+            activeNodes = activeNodes.filter(
+                node => node !== osc
+            );
+        };
+
+    });
+
+};
+
+
+// STOP MUSIC
+
+function stopMusic() {
+
+    activeNodes.forEach(osc => {
+        try {
+            osc.stop();
+        } catch (e) {}
+    });
+
+    activeNodes = [];
+
+}
+
+document.getElementById("stop").onclick = stopMusic;
+
+</script>
+
+</body>
+</html>

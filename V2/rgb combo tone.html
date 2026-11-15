@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+  <body>
+    <img id="inputimg" />
+    <input type="file" id="imageInput" accept="image/png" />
+    <canvas id="canvas"></canvas>
+    <pre id="output"></pre>
+
+     <button onclick="playNote()" /> 
+
+
+    <script>
+      const input = document.getElementById("imageInput");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      input.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+
+          ctx.drawImage(img, 0, 0);
+
+          // Extract pixel data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+          const pixels = imageData.data;
+          const result = [];
+
+          for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+              const i = (y * canvas.width + x) * 4;
+
+              const r = pixels[i];
+              const g = pixels[i + 1];
+              const b = pixels[i + 2];
+              const a = pixels[i + 3];
+
+              const brightness = r * 0.299 + g * 0.587 + b * 0.114;
+
+              result.push({
+                x,
+                y,
+                r,
+                g,
+                b,
+                a,
+                brightness,
+              });
+
+            
+            }
+          }
+
+          document.getElementById("output").textContent = JSON.stringify(
+            result.slice(0, 100),
+            null,
+            2,
+          );
+
+          //console.log(result);
+        };
+
+        img.src = URL.createObjectURL(file);
+        //inputimg.src = img.src;
+
+        async function playNote(rnote) {
+          await Tone.start();
+          synth.triggerAttackRelease(rnote, "8n");
+        }
+      }); // playnote only works on onclick and the result json needs to be parsed line by line to read r values to set it.
+    </script>
+  </body>
+</html>

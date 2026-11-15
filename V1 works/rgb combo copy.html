@@ -1,0 +1,354 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image to Music - Tone.js</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.1.22/Tone.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+
+        button, input {
+            padding: 10px;
+            margin: 8px;
+        }
+
+        canvas {
+            max-width: 100%;
+            border: 1px solid black;
+        }
+
+        pre {
+            background: white;
+            padding: 10px;
+            max-height: 250px;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Image to Music Generator - Tone.js</h2>
+
+
+<input type="file" id="imageInput" accept="image/png">
+
+<br>
+
+<canvas id="canvas"></canvas>
+
+<br>
+<button id="AAA">AAA</button> 
+  
+ 
+<button id="play">Play Music</button>
+<button id="butt">Butt</button>
+<button id="stop">Stop Music</button>
+
+<h3>Extracted RGB Values</h3>
+
+<pre id="output"></pre>
+
+<script>
+
+// IMAGE ELEMENTS
+
+const input = document.getElementById("imageInput");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const output = document.getElementById("output");
+
+let result = [];
+
+
+// CONFIGURATION
+
+const config = {
+    minFrequency: 150,
+    maxFrequency: 1200,
+
+    maxVolume: 0.8,
+
+    noteDuration: 0.12,
+
+    release: 0.08,
+
+    sampleStep: 4
+};
+
+
+// TONE.JS INSTRUMENTS
+
+let synth;
+let playing = false;
+
+
+// IMAGE PROCESSING
+
+input.addEventListener("change", (event) => {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    const img = new Image();
+
+    img.onload = () => {
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(
+            0, 0,
+            canvas.width,
+            canvas.height
+        );
+
+        const pixels = imageData.data;
+
+        result = [];
+
+        for (
+            let y = 0;
+            y < canvas.height;
+            y += config.sampleStep
+        ) {
+
+            for (
+                let x = 0;
+                x < canvas.width;
+                x += config.sampleStep
+            ) {
+
+                const i = (y * canvas.width + x) * 4;
+
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                const a = pixels[i + 3];
+
+                const brightness =
+                    r * 0.299 +
+                    g * 0.587 +
+                    b * 0.114;
+
+                result.push({
+                    x, y, r, g, b, a, brightness
+                });
+
+            }
+        }
+
+        output.textContent =
+            JSON.stringify(result.slice(0, 100), null, 2);
+
+        console.log(result);
+
+        URL.revokeObjectURL(img.src);
+    };
+
+    img.src = URL.createObjectURL(file);
+
+});
+
+
+// PLAY MUSIC
+
+function startMusic() {
+
+    const synth = new Tone.Synth().toDestination();
+
+  async function playNote() {
+    await Tone.start();
+    synth.triggerAttackRelease("C4", "8n");
+  }
+
+
+}
+
+document.getElementById("play").onclick = startMusic;
+// document.getElementById("play").onclick = async () => {
+//  const synth = new Tone.Synth().toDestination();
+
+//     async function playNote() {
+//     await Tone.start();
+//     synth.triggerAttackRelease("C4", "8n");
+//   }
+
+  
+// };
+// document.getElementById("play").onclick = async () => {
+
+//     if (result.length === 0) {
+//         alert("Upload a PNG image first!");
+//         return;
+//     }
+
+//     await Tone.start();
+//     const synth = new Tone.Synth().toDestination();
+
+  
+//     synth.triggerAttackRelease("C4", "8n");
+  
+ 
+
+
+//     stopMusic();
+
+//     playing = true;
+
+//     // CREATE TONE.JS SYNTH
+    
+//     synth = new Tone.PolySynth(Tone.Synth, {
+//         oscillator: {
+//             type: "sine"
+//         },
+
+//         envelope: {
+//             attack: 0.02,
+//             decay: 0.1,
+//             sustain: 0.5,
+//             release: config.release
+//         }
+//     });
+
+//     synth.volume.value = -8;
+
+//     // STEREO PANNER
+
+//     const panner = new Tone.Panner(0).toDestination();
+
+//     synth.connect(panner);
+
+
+//     const width = canvas.width;
+
+//     const height = canvas.height;
+
+//     const startTime = Tone.now() + 0.2;
+
+
+//     // CONVERT PIXELS TO NOTES
+
+//     result.forEach((pixel) => {
+
+//         if (pixel.a === 0) return;
+
+//         // RED = FREQUENCY
+
+//         const frequency =
+//             config.minFrequency +
+//             (pixel.r / 255) *
+//             (config.maxFrequency - config.minFrequency);
+// console.log ("frequency=" +frequency);
+
+//         // GREEN = VOLUME
+
+//         const volume =
+//             (pixel.g / 255) * config.maxVolume;
+
+
+//         // BLUE = WAVEFORM
+
+//         let waveform = "sine";
+
+//         if (pixel.b < 85) {
+//             waveform = "sine";
+//         }
+//         else if (pixel.b < 170) {
+//             waveform = "triangle";
+//         }
+//         else {
+//             waveform = "sawtooth";
+//         }
+
+
+//         // X = STEREO PAN
+
+//         const pan =
+//             (pixel.x / Math.max(1, width - 1)) * 2 - 1;
+
+
+//         // Y = TIMING
+
+//         const time =
+//             startTime +
+//             (pixel.y / config.sampleStep) *
+//             config.noteDuration;
+
+
+//         // BRIGHTNESS = DURATION
+
+//         const duration =
+//             0.05 +
+//             (pixel.brightness / 255) * 0.2;
+
+
+//         // UPDATE WAVEFORM
+
+//         synth.set({
+//             oscillator: {
+//                 type: waveform
+//             }
+//         });
+
+
+//         // UPDATE PAN
+
+//         panner.pan.setValueAtTime(
+//             pan,
+//             time
+//         );
+
+
+//         // RGB GREEN TO DECIBELS
+
+//         const velocity = Math.max(
+//             0.001,
+//             volume / config.maxVolume
+//         );
+
+
+//         // PLAY NOTE
+
+//         synth.triggerAttackRelease(
+//             frequency,
+//             duration,
+//             time,
+//             velocity
+//         );
+
+//     });
+
+ 
+
+
+// STOP MUSIC
+
+function stopMusic() {
+
+    if (synth) {
+        synth.releaseAll();
+        synth.dispose();
+        synth = null;
+    }
+
+    playing = false;
+
+}
+
+document.getElementById("stop").onclick = stopMusic;
+
+</script>
+
+</body>
+</html>
